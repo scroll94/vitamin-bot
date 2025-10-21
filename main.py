@@ -1,5 +1,15 @@
 import logging
 import os
+import requests
+import os
+
+TOKEN = os.getenv("BOT_TOKEN")
+WEBHOOK_URL = f"https://vitamin-bot-mwr4.onrender.com/{TOKEN}"
+
+# Установим вебхук при запуске
+set_webhook = requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={WEBHOOK_URL}")
+print(set_webhook.text)
+
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from datetime import datetime
@@ -85,3 +95,4 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     loop.create_task(run_bot())
     app.run(host='0.0.0.0', port=PORT)
+
