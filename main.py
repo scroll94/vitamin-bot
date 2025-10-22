@@ -4,13 +4,8 @@ import logging
 import asyncio
 from flask import Flask, request
 from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    filters,
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+import requests
 
 # === НАСТРОЙКИ ===
 TOKEN = os.getenv("BOT_TOKEN", "8260202137:AAHc9MvaZAVlFfQwgHUsYi6z6ps2_Ekx1NE")
@@ -60,28 +55,27 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📊 Статистика пока не подключена, но ты уже молодец!")
 
 # === СОЗДАНИЕ ПРИЛОЖЕНИЯ ===
-application = Application.builder().token(TOKEN).build()
+app = Flask(__name__)
+application = ApplicationBuilder().token(TOKEN).build()
+
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.Regex("💊 Напомнить сейчас"), remind))
 application.add_handler(MessageHandler(filters.Regex("📊 Статистика"), stats))
-
-# === FLASK ===
-app = Flask(__name__)
 
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     data = request.get_json(force=True)
     update = Update.de_json(data, application.bot)
-    asyncio.run(application.process_update(update))  # <-- Исправлено
+    asyncio.run(application.process_update(update))
     return "ok", 200
 
 @app.route("/")
 def index():
-    return "🤖 Vitamin Bot is running!"
+    return "🤖 Vitamin Bot is alive!"
 
-# === ЗАПУСК ===
 if __name__ == "__main__":
-    import requests
-    url = f"https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://{RENDER_URL}/{TOKEN}"
-    requests.get(url)
+    # Устанавливаем webhook при запуске
+    webhook_url = f"https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://{RENDER_URL}/{TOKEN}"
+    print("Setting webhook:", requests.get(webhook_url).text)
+
     app.run(host="0.0.0.0", port=PORT)
