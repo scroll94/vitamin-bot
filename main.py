@@ -8,8 +8,8 @@ from telegram.ext import Application, CommandHandler, MessageHandler, ContextTyp
 import requests
 
 # === НАСТРОЙКИ ===
-TOKEN = os.getenv("BOT_TOKEN", "8260202137:AAHc9MvaZAVlFfQwgHUsYi6z6ps2_Ekx1NE")
-RENDER_URL = os.getenv("RENDER_EXTERNAL_URL", "vitamin-bot-mwr4.onrender.com")
+TOKEN = os.getenv("BOT_TOKEN")
+RENDER_URL = os.getenv("RENDER_EXTERNAL_URL")
 PORT = int(os.environ.get("PORT", 5000))
 
 # === ЛОГИ ===
@@ -57,33 +57,32 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # === Flask + Telegram ===
 app = Flask(__name__)
 
-# Инициализация приложения Telegram (сразу, не в запросе)
 application = Application.builder().token(TOKEN).build()
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.Regex("💊 Напомнить сейчас"), remind))
 application.add_handler(MessageHandler(filters.Regex("📊 Статистика"), stats))
 
-# === Запуск вебхука ===
+# === Вебхук при первом запросе ===
 @app.before_first_request
 def init_webhook():
-    """Запускаем Telegram webhook"""
     asyncio.get_event_loop().run_until_complete(application.initialize())
     asyncio.get_event_loop().run_until_complete(application.start())
-    webhook_url = f"https://{RENDER_URL}/{TOKEN}"
-    requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={webhook_url}")
-    print(f"✅ Webhook установлен: {webhook_url}")
 
-# === Flask маршруты ===
+    # 🟢 Правильный URL без лишнего слэша
+    webhook_target = f"https://{RENDER_URL}/{TOKEN}"
+    response = requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook", params={"url": webhook_target})
+    print(f"Webhook установка: {response.text}")
+
+# === Обработка Telegram апдейтов ===
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
-    """Получение апдейтов от Telegram"""
     update = Update.de_json(request.get_json(force=True), application.bot)
     asyncio.get_event_loop().create_task(application.process_update(update))
     return "OK", 200
 
 @app.route("/")
 def index():
-    return "🤖 Vitamin Bot работает на Render!"
+    return "🤖 Vitamin Bot работает и ждет сообщений!"
 
 # === Запуск Flask ===
 if __name__ == "__main__":
