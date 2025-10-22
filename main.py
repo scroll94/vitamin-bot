@@ -62,7 +62,7 @@ application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.Regex("💊 Напомнить сейчас"), remind))
 application.add_handler(MessageHandler(filters.Regex("📊 Статистика"), stats))
 
-# === Webhook ===
+# === Вебхуки ===
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     """Получение апдейтов от Telegram"""
@@ -76,15 +76,17 @@ def webhook():
     asyncio.run(process())
     return "OK", 200
 
-
 @app.route("/")
 def index():
     return "🤖 Vitamin Bot is alive!"
 
-
+# === Запуск ===
 if __name__ == "__main__":
     # Устанавливаем webhook при запуске
-    webhook_url = f"https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://{RENDER_URL}/{TOKEN}"
+    full_url = f"https://{RENDER_URL}/{TOKEN}"
+    webhook_url = f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={full_url}"
+
     print("Setting webhook:", requests.get(webhook_url).text)
 
+    # Запускаем Flask
     app.run(host="0.0.0.0", port=PORT)
