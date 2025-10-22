@@ -56,37 +56,35 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # === Flask + Telegram ===
 app = Flask(__name__)
-application = Application.builder().token(TOKEN).build()
 
+# Инициализация приложения Telegram (сразу, не в запросе)
+application = Application.builder().token(TOKEN).build()
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.Regex("💊 Напомнить сейчас"), remind))
 application.add_handler(MessageHandler(filters.Regex("📊 Статистика"), stats))
 
-# === Вебхуки ===
+# === Запуск вебхука ===
+@app.before_first_request
+def init_webhook():
+    """Запускаем Telegram webhook"""
+    asyncio.get_event_loop().run_until_complete(application.initialize())
+    asyncio.get_event_loop().run_until_complete(application.start())
+    webhook_url = f"https://{RENDER_URL}/{TOKEN}"
+    requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={webhook_url}")
+    print(f"✅ Webhook установлен: {webhook_url}")
+
+# === Flask маршруты ===
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     """Получение апдейтов от Telegram"""
     update = Update.de_json(request.get_json(force=True), application.bot)
-
-    async def process():
-        if not application.running:
-            await application.initialize()
-        await application.process_update(update)
-
-    asyncio.run(process())
+    asyncio.get_event_loop().create_task(application.process_update(update))
     return "OK", 200
 
 @app.route("/")
 def index():
-    return "🤖 Vitamin Bot is alive!"
+    return "🤖 Vitamin Bot работает на Render!"
 
-# === Запуск ===
+# === Запуск Flask ===
 if __name__ == "__main__":
-    # Устанавливаем webhook при запуске
-    full_url = f"https://{RENDER_URL}/{TOKEN}"
-    webhook_url = f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={full_url}"
-
-    print("Setting webhook:", requests.get(webhook_url).text)
-
-    # Запускаем Flask
     app.run(host="0.0.0.0", port=PORT)
