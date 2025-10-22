@@ -62,6 +62,12 @@ application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.Regex("💊 Напомнить сейчас"), remind))
 application.add_handler(MessageHandler(filters.Regex("📊 Статистика"), stats))
 
+# 🔧 ВАЖНО: инициализация приложения
+async def init_app():
+    await application.initialize()
+
+asyncio.run(init_app())
+
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     """Получение апдейтов от Telegram"""
@@ -74,14 +80,9 @@ def webhook():
 def index():
     return "🤖 Vitamin Bot is alive!"
 
-# === ИСПРАВЛЕННЫЙ ФИНАЛ ===
 if __name__ == "__main__":
-    # Добавляем https:// к URL, если его нет
-    if not RENDER_URL.startswith("https://"):
-        RENDER_URL = f"https://{RENDER_URL}"
-
     # Устанавливаем webhook при запуске
-    webhook_url = f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={RENDER_URL}/{TOKEN}"
+    webhook_url = f"https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://{RENDER_URL}/{TOKEN}"
     print("Setting webhook:", requests.get(webhook_url).text)
 
     app.run(host="0.0.0.0", port=PORT)
