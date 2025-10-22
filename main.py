@@ -1,54 +1,87 @@
-import logging
-from flask import Flask, request
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
-import asyncio
 import os
+import random
+import logging
+import asyncio
+from flask import Flask, request
+from telegram import Update, ReplyKeyboardMarkup
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
+)
 
-# === НАСТРОЙКА ЛОГОВ ===
+# === НАСТРОЙКИ ===
+TOKEN = os.getenv("BOT_TOKEN", "8260202137:AAHc9MvaZAVlFfQwgHUsYi6z6ps2_Ekx1NE")
+RENDER_URL = os.getenv("RENDER_EXTERNAL_URL", "vitamin-bot-mwr4.onrender.com")
+PORT = int(os.environ.get("PORT", 5000))
+
+# === ЛОГИ ===
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
-# === СОЗДАЁМ FLASK ===
+# === СООБЩЕНИЯ ===
+CUTE_MESSAGES = [
+    "💖 Принцесса, не забудь про витамины!",
+    "✨ Звёздочка, пора принять витаминки!",
+    "🎀 Котик мой, пора заботиться о себе! 💊",
+    "💕 Любимая, не забудь выпить витамины! 🌸",
+]
+
+SUCCESS_MESSAGES = [
+    "🎉 Умничка! Так держать! 💪",
+    "💖 Самая ответственная девочка! 🥰",
+    "✨ Молодец! Заботишься о себе! 🌸",
+    "🎀 Вот это дисциплина! 💕",
+]
+
+# === КНОПКИ ===
+def main_keyboard():
+    return ReplyKeyboardMarkup(
+        [["💊 Напомнить сейчас", "📊 Статистика"]],
+        resize_keyboard=True
+    )
+
+# === ОБРАБОТЧИКИ ===
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "💖 Привет, моя милая! Я твой бот-напоминатель о витаминах 🎀",
+        reply_markup=main_keyboard()
+    )
+
+async def remind(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    msg1 = random.choice(CUTE_MESSAGES)
+    msg2 = random.choice(SUCCESS_MESSAGES)
+    await update.message.reply_text(msg1)
+    await asyncio.sleep(2)
+    await update.message.reply_text(msg2)
+
+async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("📊 Статистика пока не подключена, но ты уже молодец!")
+
+# === СОЗДАНИЕ ПРИЛОЖЕНИЯ ===
+application = Application.builder().token(TOKEN).build()
+application.add_handler(CommandHandler("start", start))
+application.add_handler(MessageHandler(filters.Regex("💊 Напомнить сейчас"), remind))
+application.add_handler(MessageHandler(filters.Regex("📊 Статистика"), stats))
+
+# === FLASK ===
 app = Flask(__name__)
 
-# === ТОКЕН БОТА ===
-TOKEN = os.getenv("BOT_TOKEN", "ВАШ_ТОКЕН_БОТА")
-
-# === СОЗДАЁМ TELEGRAM APPLICATION ===
-application = Application.builder().token(TOKEN).build()
-
-
-# === КОМАНДЫ ===
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Я работаю через Flask webhook 😎")
-
-
-application.add_handler(CommandHandler("start", start))
-
-
-# === ВЕБХУК ДЛЯ TELEGRAM ===
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
-    """Получаем обновления от Telegram и передаём в application"""
-    try:
-        update = Update.de_json(request.get_json(force=True), application.bot)
-        asyncio.run(application.process_update(update))  # <-- Исправлено!
-    except Exception as e:
-        logger.error(f"Ошибка при обработке обновления: {e}")
+    data = request.get_json(force=True)
+    update = Update.de_json(data, application.bot)
+    asyncio.run(application.process_update(update))  # <-- Исправлено
     return "ok", 200
 
-
-# === ГЛАВНАЯ СТРАНИЦА ===
 @app.route("/")
-def home():
-    return "Бот запущен успешно!"
+def index():
+    return "🤖 Vitamin Bot is running!"
 
-
-# === ЗАПУСК FLASK ===
+# === ЗАПУСК ===
 if __name__ == "__main__":
-    # Устанавливаем webhook при старте
-    WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/{TOKEN}"
-    asyncio.run(application.bot.set_webhook(url=WEBHOOK_URL))
-
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
+    import requests
+    url = f"https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://{RENDER_URL}/{TOKEN}"
+    requests.get(url)
+    app.run(host="0.0.0.0", port=PORT)
