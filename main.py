@@ -71,10 +71,21 @@ asyncio.run(init_app())
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     """Получение апдейтов от Telegram"""
-    data = request.get_json(force=True)
-    update = Update.de_json(data, application.bot)
-    asyncio.run(application.process_update(update))
-    return "ok", 200
+   @app.route(f"/{TOKEN}", methods=["POST"])
+def webhook():
+    from telegram import Update
+
+    update = Update.de_json(request.get_json(force=True), application.bot)
+
+    async def process():
+        if not application.running:
+            await application.initialize()
+        await application.process_update(update)
+
+    asyncio.run(process())
+    return "OK", 200
+
+    
 
 @app.route("/")
 def index():
@@ -86,3 +97,4 @@ if __name__ == "__main__":
     print("Setting webhook:", requests.get(webhook_url).text)
 
     app.run(host="0.0.0.0", port=PORT)
+
