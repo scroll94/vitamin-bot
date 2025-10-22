@@ -4,7 +4,7 @@ import logging
 import asyncio
 from flask import Flask, request
 from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 import requests
 
 # === НАСТРОЙКИ ===
@@ -54,9 +54,9 @@ async def remind(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📊 Статистика пока не подключена, но ты уже молодец!")
 
-# === СОЗДАНИЕ ПРИЛОЖЕНИЯ ===
+# === Flask + Telegram ===
 app = Flask(__name__)
-application = ApplicationBuilder().token(TOKEN).build()
+application = Application.builder().token(TOKEN).build()
 
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.Regex("💊 Напомнить сейчас"), remind))
@@ -64,6 +64,7 @@ application.add_handler(MessageHandler(filters.Regex("📊 Статистика"
 
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
+    """Получение апдейтов от Telegram"""
     data = request.get_json(force=True)
     update = Update.de_json(data, application.bot)
     asyncio.run(application.process_update(update))
